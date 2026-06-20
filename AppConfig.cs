@@ -110,6 +110,7 @@ namespace DesktopClock
                     HotKey = "",
                     AppPath = "",
                     Arguments = "",
+                    Url = "",
                     X = 20 + ((number - 1) * 54),
                     Y = 260
                 });
@@ -167,6 +168,8 @@ namespace DesktopClock
         public string HotKey { get; set; } = "";
         public string AppPath { get; set; } = "";
         public string Arguments { get; set; } = "";
+
+        public string Url { get; set; } = "";
 
         public double X { get; set; } = 20;
         public double Y { get; set; } = 260;

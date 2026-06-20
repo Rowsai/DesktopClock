@@ -519,6 +519,13 @@ namespace DesktopClock
                     Margin = new Thickness(0, 0, 0, 4),
                     ToolTip = "起動引数がある場合のみ入力"
                 };
+                
+                TextBox urlBox = new TextBox
+                {
+                    Text = item.Url,
+                    Margin = new Thickness(0, 0, 0, 4),
+                    ToolTip = "例: steam://rungameid/1172470 または https://example.com"
+                };
 
                 TextBlock positionText = new TextBlock
                 {
@@ -559,6 +566,13 @@ namespace DesktopClock
                 {
                     item.Arguments = argsBox.Text;
                     SaveCurrentConfig();
+                };
+                
+                urlBox.TextChanged += (_, _) =>
+                {
+                    item.Url = urlBox.Text;
+                    SaveCurrentConfig();
+                    RefreshHotbarWidget();
                 };
 
                 iconButton.Click += (_, _) =>
@@ -635,6 +649,13 @@ namespace DesktopClock
                     Foreground = Brushes.White
                 });
                 panel.Children.Add(argsBox);
+                
+                panel.Children.Add(new TextBlock
+                {
+                    Text = "起動URL",
+                    Foreground = Brushes.White
+                });
+                panel.Children.Add(urlBox);
 
                 panel.Children.Add(positionText);
 
@@ -788,8 +809,13 @@ namespace DesktopClock
         {
             bool hasApp = !string.IsNullOrWhiteSpace(item.AppPath);
             bool hasValidApp = hasApp && File.Exists(item.AppPath);
+            bool hasUrl = !string.IsNullOrWhiteSpace(item.Url);
             bool hasHotKey = !string.IsNullOrWhiteSpace(item.HotKey);
+            bool hasManualIcon =
+                !string.IsNullOrWhiteSpace(item.IconPath) &&
+                File.Exists(item.IconPath);
 
+            // 1. 起動アプリが設定されている場合は、起動アプリのアイコンを最優先
             if (hasValidApp)
             {
                 ImageSource? appIcon = TryGetAssociatedIconImageSource(item.AppPath);
@@ -812,40 +838,73 @@ namespace DesktopClock
                 return CreateHotbarTextBlock(Path.GetFileNameWithoutExtension(item.AppPath));
             }
 
+            // 2. 起動アプリがなく、URLが設定されていて、手動アイコンもある場合
+            //    → 手動アイコンを表示する
+            if (hasUrl && hasManualIcon)
+            {
+                return CreateManualHotbarIcon(item.IconPath);
+            }
+
+            // 3. 起動アプリがなく、URLだけ設定されている場合
+            //    → URL種別の文字を表示する
+            if (hasUrl)
+            {
+                if (IsSteamUrl(item.Url))
+                {
+                    return CreateHotbarTextBlock("Steam");
+                }
+
+                if (IsWebUrl(item.Url))
+                {
+                    return CreateHotbarTextBlock("WEB");
+                }
+
+                return CreateHotbarTextBlock("URL");
+            }
+
+            // 4. URLも起動アプリもなく、ホットキーだけ設定されている場合
+            //    → ホットキー文字列を表示
             if (hasHotKey)
             {
                 return CreateHotbarTextBlock(item.HotKey);
             }
 
-            if (!string.IsNullOrWhiteSpace(item.IconPath) &&
-                File.Exists(item.IconPath))
+            // 5. 起動アプリ、URL、ホットキーがなく、手動アイコンがある場合
+            //    → 手動アイコンを表示
+            if (hasManualIcon)
             {
-                BitmapImage bitmap = new BitmapImage();
-
-                bitmap.BeginInit();
-                bitmap.UriSource = new Uri(item.IconPath, UriKind.Absolute);
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
-                bitmap.DecodePixelWidth = 96;
-                bitmap.EndInit();
-                bitmap.Freeze();
-
-                Image image = new Image
-                {
-                    Stretch = Stretch.UniformToFill,
-                    Source = bitmap
-                };
-
-                RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
-
-                return image;
+                return CreateManualHotbarIcon(item.IconPath);
             }
 
+            // 6. 何もなければ表示名、なければ番号
             string text = string.IsNullOrWhiteSpace(item.Name)
                 ? $"{index + 1}"
                 : item.Name;
 
             return CreateHotbarTextBlock(text);
+        }
+        
+        private FrameworkElement CreateManualHotbarIcon(string iconPath)
+        {
+            BitmapImage bitmap = new BitmapImage();
+
+            bitmap.BeginInit();
+            bitmap.UriSource = new Uri(iconPath, UriKind.Absolute);
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.CreateOptions = BitmapCreateOptions.IgnoreImageCache;
+            bitmap.DecodePixelWidth = 96;
+            bitmap.EndInit();
+            bitmap.Freeze();
+
+            Image image = new Image
+            {
+                Stretch = Stretch.UniformToFill,
+                Source = bitmap
+            };
+
+            RenderOptions.SetBitmapScalingMode(image, BitmapScalingMode.HighQuality);
+
+            return image;
         }
 
         private TextBlock CreateHotbarTextBlock(string text)
@@ -870,24 +929,42 @@ namespace DesktopClock
                 : item.Name;
 
             bool hasApp = !string.IsNullOrWhiteSpace(item.AppPath);
+            bool hasUrl = !string.IsNullOrWhiteSpace(item.Url);
             bool hasHotKey = !string.IsNullOrWhiteSpace(item.HotKey);
 
-            if (hasApp && hasHotKey)
-            {
-                return $"{name}\n起動アプリ：{item.AppPath}\nホットキー：{item.HotKey}\n実行優先：起動アプリ\n位置：X={(int)item.X}, Y={(int)item.Y}";
-            }
+            string tooltip = name;
 
             if (hasApp)
             {
-                return $"{name}\n起動アプリ：{item.AppPath}\n位置：X={(int)item.X}, Y={(int)item.Y}";
+                tooltip += $"\n起動アプリ：{item.AppPath}";
+            }
+
+            if (hasUrl)
+            {
+                tooltip += $"\n起動URL：{item.Url}";
             }
 
             if (hasHotKey)
             {
-                return $"{name}\nホットキー：{item.HotKey}\n位置：X={(int)item.X}, Y={(int)item.Y}";
+                tooltip += $"\nホットキー：{item.HotKey}";
             }
 
-            return $"{name}\n位置：X={(int)item.X}, Y={(int)item.Y}";
+            if (hasApp)
+            {
+                tooltip += "\n実行優先：起動アプリ";
+            }
+            else if (hasUrl)
+            {
+                tooltip += "\n実行優先：URL";
+            }
+            else if (hasHotKey)
+            {
+                tooltip += "\n実行優先：ホットキー";
+            }
+
+            tooltip += $"\n位置：X={(int)item.X}, Y={(int)item.Y}";
+
+            return tooltip;
         }
 
         private ImageSource? TryGetAssociatedIconImageSource(string appPath)
@@ -925,8 +1002,10 @@ namespace DesktopClock
         {
             bool hasApp = !string.IsNullOrWhiteSpace(item.AppPath);
             bool hasValidApp = hasApp && File.Exists(item.AppPath);
+            bool hasUrl = !string.IsNullOrWhiteSpace(item.Url);
             bool hasHotKey = !string.IsNullOrWhiteSpace(item.HotKey);
 
+            // 1. 起動アプリがある場合は最優先
             if (hasValidApp)
             {
                 LaunchHotbarItem(item);
@@ -943,6 +1022,14 @@ namespace DesktopClock
                 return;
             }
 
+            // 2. URLがある場合
+            if (hasUrl)
+            {
+                LaunchHotbarUrl(item.Url);
+                return;
+            }
+
+            // 3. ホットキーがある場合
             if (hasHotKey)
             {
                 MessageBox.Show(
@@ -954,12 +1041,12 @@ namespace DesktopClock
             }
 
             MessageBox.Show(
-                "起動アプリまたはホットキーが設定されていません。",
+                "起動アプリ、URL、ホットキーが設定されていません。",
                 "ホットバー",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }
-
+        
         private void LaunchHotbarItem(HotbarItemConfig item)
         {
             if (string.IsNullOrWhiteSpace(item.AppPath))
@@ -1001,6 +1088,121 @@ namespace DesktopClock
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
             }
+        }
+
+        private void LaunchHotbarUrl(string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                MessageBox.Show(
+                    "URLが設定されていません。",
+                    "ホットバー",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            string trimmedUrl = url.Trim();
+
+            try
+            {
+                if (IsWebUrl(trimmedUrl))
+                {
+                    LaunchWebUrlWithChrome(trimmedUrl);
+                    return;
+                }
+
+                // steam:// などのカスタムURLスキームは Windows に任せる
+                ProcessStartInfo startInfo = new ProcessStartInfo
+                {
+                    FileName = trimmedUrl,
+                    UseShellExecute = true
+                };
+
+                Process.Start(startInfo);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"URLの起動に失敗しました。\n{trimmedUrl}\n\n{ex.Message}",
+                    "ホットバー",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private void LaunchWebUrlWithChrome(string url)
+        {
+            string? chromePath = FindChromePath();
+
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(chromePath) &&
+                    File.Exists(chromePath))
+                {
+                    ProcessStartInfo chromeStartInfo = new ProcessStartInfo
+                    {
+                        FileName = chromePath,
+                        Arguments = $"\"{url}\"",
+                        UseShellExecute = true
+                    };
+
+                    Process.Start(chromeStartInfo);
+                    return;
+                }
+
+                // Chromeが見つからない場合は既定ブラウザで開く
+                ProcessStartInfo fallbackStartInfo = new ProcessStartInfo
+                {
+                    FileName = url,
+                    UseShellExecute = true
+                };
+
+                Process.Start(fallbackStartInfo);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"URLをブラウザで開けませんでした。\n{url}\n\n{ex.Message}",
+                    "ホットバー",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+            }
+        }
+
+        private static string? FindChromePath()
+        {
+            string programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            string programFilesX86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+
+            string[] candidates =
+            {
+                Path.Combine(programFiles, "Google", "Chrome", "Application", "chrome.exe"),
+                Path.Combine(programFilesX86, "Google", "Chrome", "Application", "chrome.exe"),
+                Path.Combine(localAppData, "Google", "Chrome", "Application", "chrome.exe")
+            };
+
+            foreach (string candidate in candidates)
+            {
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsWebUrl(string url)
+        {
+            return url.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ||
+                   url.StartsWith("http://", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsSteamUrl(string url)
+        {
+            return url.StartsWith("steam://", StringComparison.OrdinalIgnoreCase);
         }
 
         private int GetSelectedHotbarItemCount()
