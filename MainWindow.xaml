@@ -1,0 +1,706 @@
+﻿<Window x:Class="DesktopClock.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:DesktopClock"
+        Title="Desktop Clock"
+        Width="420"
+        Height="220"
+        MinWidth="260"
+        MinHeight="160"
+        ResizeMode="CanResizeWithGrip"
+        WindowStartupLocation="Manual"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        Topmost="True"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        TextOptions.TextHintingMode="Fixed"
+        LocationChanged="Window_LocationChanged"
+        SizeChanged="Window_SizeChanged"
+        Closing="Window_Closing"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+
+    <Window.Resources>
+
+        <!-- 右下メインボタン：見た目重視 -->
+        <Style x:Key="ClockButtonStyle" TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Margin" Value="6,0,0,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="#B5222222"/>
+            <Setter Property="BorderBrush" Value="#DDFFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="MinWidth" Value="72"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+            <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
+            <Setter Property="TextOptions.TextHintingMode" Value="Fixed"/>
+
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10"
+                                SnapsToDevicePixels="True">
+
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="9"
+                                                  ShadowDepth="2"
+                                                  Opacity="0.45"/>
+                            </Border.Effect>
+
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              SnapsToDevicePixels="True"
+                                              TextOptions.TextFormattingMode="Display"
+                                              TextOptions.TextRenderingMode="ClearType"
+                                              TextOptions.TextHintingMode="Fixed"/>
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#E03A3A3A"/>
+                                <Setter TargetName="ButtonBorder"
+                                        Property="BorderBrush"
+                                        Value="#FFFFFFFF"/>
+                            </Trigger>
+
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#FF111111"/>
+                                <Setter TargetName="ButtonBorder"
+                                        Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.97"
+                                                        ScaleY="0.97"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter TargetName="ButtonBorder"
+                                        Property="RenderTransformOrigin"
+                                        Value="0.5,0.5"/>
+                            </Trigger>
+
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Opacity"
+                                        Value="0.45"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- 閉じるボタン -->
+        <Style x:Key="CloseButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource ClockButtonStyle}">
+            <Setter Property="Background" Value="#B57A2020"/>
+            <Setter Property="BorderBrush" Value="#FFFF8888"/>
+            <Setter Property="MinWidth" Value="44"/>
+        </Style>
+
+        <!-- 設定画面内ボタン：少しリッチに -->
+        <Style x:Key="SettingsButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Margin" Value="0,0,8,0"/>
+            <Setter Property="MinWidth" Value="72"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Background" Value="#FF3A3A3A"/>
+            <Setter Property="BorderBrush" Value="#AAFFFFFF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+            <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
+            <Setter Property="TextOptions.TextHintingMode" Value="Fixed"/>
+
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ButtonBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="7"
+                                SnapsToDevicePixels="True">
+
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="5"
+                                                  ShadowDepth="1"
+                                                  Opacity="0.25"/>
+                            </Border.Effect>
+
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"
+                                              SnapsToDevicePixels="True"/>
+                        </Border>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#FF505050"/>
+                                <Setter TargetName="ButtonBorder"
+                                        Property="BorderBrush"
+                                        Value="#FFFFFFFF"/>
+                            </Trigger>
+
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Background"
+                                        Value="#FF222222"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SettingsLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+            <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
+            <Setter Property="TextOptions.TextHintingMode" Value="Fixed"/>
+        </Style>
+
+        <!-- 設定画面内 TextBox -->
+        <Style TargetType="TextBox">
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+            <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
+            <Setter Property="TextOptions.TextHintingMode" Value="Fixed"/>
+            <Setter Property="Padding" Value="4,2"/>
+        </Style>
+
+        <!-- 設定画面内 CheckBox -->
+        <Style TargetType="CheckBox">
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+            <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
+            <Setter Property="TextOptions.TextHintingMode" Value="Fixed"/>
+        </Style>
+
+        <!-- 設定画面内 ComboBox -->
+        <Style TargetType="ComboBox">
+            <Setter Property="UseLayoutRounding" Value="True"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+            <Setter Property="TextOptions.TextRenderingMode" Value="ClearType"/>
+            <Setter Property="TextOptions.TextHintingMode" Value="Fixed"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Grid x:Name="RootGrid"
+          Background="#202020"
+          UseLayoutRounding="True"
+          SnapsToDevicePixels="True"
+          TextOptions.TextFormattingMode="Display"
+          TextOptions.TextRenderingMode="ClearType"
+          TextOptions.TextHintingMode="Fixed">
+
+        <!-- 時計表示エリア -->
+        <Grid x:Name="ClockArea"
+              VerticalAlignment="Stretch"
+              HorizontalAlignment="Stretch"
+              Panel.ZIndex="10"
+              UseLayoutRounding="True"
+              SnapsToDevicePixels="True">
+
+            <StackPanel HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        UseLayoutRounding="True"
+                        SnapsToDevicePixels="True">
+
+                <TextBlock x:Name="TimeText"
+                           Text="00:00:00"
+                           Foreground="White"
+                           FontSize="48"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           UseLayoutRounding="True"
+                           SnapsToDevicePixels="True"
+                           TextOptions.TextFormattingMode="Display"
+                           TextOptions.TextRenderingMode="ClearType"
+                           TextOptions.TextHintingMode="Fixed">
+
+                    <TextBlock.Effect>
+                        <DropShadowEffect BlurRadius="6"
+                                          ShadowDepth="2"
+                                          Opacity="0.9"/>
+                    </TextBlock.Effect>
+                </TextBlock>
+
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            Margin="0,8,0,0"
+                            UseLayoutRounding="True"
+                            SnapsToDevicePixels="True">
+
+                    <TextBlock x:Name="DatePrefixText"
+                               Text="2026/01/01"
+                               Foreground="White"
+                               FontSize="24"
+                               HorizontalAlignment="Center"
+                               UseLayoutRounding="True"
+                               SnapsToDevicePixels="True"
+                               TextOptions.TextFormattingMode="Display"
+                               TextOptions.TextRenderingMode="ClearType"
+                               TextOptions.TextHintingMode="Fixed">
+
+                        <TextBlock.Effect>
+                            <DropShadowEffect BlurRadius="6"
+                                              ShadowDepth="2"
+                                              Opacity="0.9"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
+
+                    <local:OutlinedTextBlock x:Name="WeekdayText"
+                                             Text="（木）"
+                                             Fill="White"
+                                             Stroke="Transparent"
+                                             StrokeThickness="0"
+                                             FontSize="24"
+                                             FontWeight="Normal"
+                                             VerticalAlignment="Center"
+                                             UseLayoutRounding="True"
+                                             SnapsToDevicePixels="True"/>
+                </StackPanel>
+
+                <local:OutlinedTextBlock x:Name="HolidayNameText"
+                                         Text=""
+                                         Visibility="Collapsed"
+                                         Fill="Red"
+                                         Stroke="White"
+                                         StrokeThickness="1.4"
+                                         FontSize="20"
+                                         FontWeight="Bold"
+                                         HorizontalAlignment="Center"
+                                         Margin="0,4,0,0"
+                                         UseLayoutRounding="True"
+                                         SnapsToDevicePixels="True"/>
+
+            </StackPanel>
+        </Grid>
+
+        <!-- 天気ウィジット -->
+        <Border x:Name="WeatherWidget"
+                Background="#B5111111"
+                BorderBrush="#DDFFFFFF"
+                BorderThickness="1"
+                CornerRadius="10"
+                Padding="10"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Margin="20,20,0,0"
+                Panel.ZIndex="15"
+                Cursor="SizeAll"
+                UseLayoutRounding="True"
+                SnapsToDevicePixels="True"
+                TextOptions.TextFormattingMode="Display"
+                TextOptions.TextRenderingMode="ClearType"
+                TextOptions.TextHintingMode="Fixed"
+                PreviewMouseLeftButtonDown="WeatherWidget_PreviewMouseLeftButtonDown"
+                PreviewMouseMove="WeatherWidget_PreviewMouseMove"
+                PreviewMouseLeftButtonUp="WeatherWidget_PreviewMouseLeftButtonUp">
+
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="10"
+                                  ShadowDepth="2"
+                                  Opacity="0.45"/>
+            </Border.Effect>
+
+            <StackPanel UseLayoutRounding="True"
+                        SnapsToDevicePixels="True">
+                <TextBlock x:Name="WeatherAreaText"
+                           Text="東京都"
+                           Foreground="White"
+                           FontSize="14"
+                           FontWeight="Bold"/>
+
+                <TextBlock x:Name="WeatherCurrentText"
+                           Text="現在：取得中"
+                           Foreground="White"
+                           FontSize="13"
+                           Margin="0,4,0,0"/>
+
+                <TextBlock x:Name="WeatherTodayText"
+                           Text="今日：取得中"
+                           Foreground="White"
+                           FontSize="13"
+                           Margin="0,2,0,0"/>
+
+                <TextBlock x:Name="WeatherTomorrowText"
+                           Text="明日：取得中"
+                           Foreground="White"
+                           FontSize="13"
+                           Margin="0,2,0,0"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ホットバーウィジット -->
+        <Canvas x:Name="HotbarCanvas"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                Panel.ZIndex="16"
+                ClipToBounds="False"
+                UseLayoutRounding="True"
+                SnapsToDevicePixels="True"/>
+
+        <!-- 作成者表示 -->
+        <TextBlock Text="Created by Rowsai"
+                   Foreground="#CCFFFFFF"
+                   FontSize="12"
+                   FontWeight="Bold"
+                   HorizontalAlignment="Right"
+                   VerticalAlignment="Bottom"
+                   Margin="0,0,16,58"
+                   Panel.ZIndex="18"
+                   UseLayoutRounding="True"
+                   SnapsToDevicePixels="True"
+                   TextOptions.TextFormattingMode="Display"
+                   TextOptions.TextRenderingMode="ClearType"
+                   TextOptions.TextHintingMode="Fixed">
+
+            <TextBlock.Effect>
+                <DropShadowEffect BlurRadius="5"
+                                  ShadowDepth="1"
+                                  Opacity="0.8"/>
+            </TextBlock.Effect>
+        </TextBlock>
+
+        <!-- 右下操作ボタン -->
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Bottom"
+                    Margin="0,0,14,14"
+                    Panel.ZIndex="20"
+                    UseLayoutRounding="True"
+                    SnapsToDevicePixels="True">
+
+            <Button x:Name="SettingsButton"
+                    Content="⚙ 設定"
+                    Style="{StaticResource ClockButtonStyle}"
+                    Click="SettingsButton_Click"/>
+
+            <Button x:Name="HideButton"
+                    Content="👁 非表示"
+                    Style="{StaticResource ClockButtonStyle}"
+                    Click="HideButton_Click"/>
+
+            <Button Content="×"
+                    Style="{StaticResource CloseButtonStyle}"
+                    Click="CloseButton_Click"/>
+        </StackPanel>
+
+        <!-- 設定画面 -->
+        <Border x:Name="SettingsPanel"
+                Visibility="Collapsed"
+                Background="#F0202020"
+                BorderBrush="#CCFFFFFF"
+                BorderThickness="1"
+                CornerRadius="14"
+                Padding="14"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Width="600"
+                MaxHeight="640"
+                UseLayoutRounding="True"
+                SnapsToDevicePixels="True"
+                TextOptions.TextFormattingMode="Display"
+                TextOptions.TextRenderingMode="ClearType"
+                TextOptions.TextHintingMode="Fixed"
+                Panel.ZIndex="30">
+
+            <!-- 見た目重視：影あり。ただし文字が眠くなりすぎない程度に調整 -->
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="16"
+                                  ShadowDepth="4"
+                                  Opacity="0.50"/>
+            </Border.Effect>
+
+            <DockPanel UseLayoutRounding="True"
+                       SnapsToDevicePixels="True">
+
+                <TextBlock DockPanel.Dock="Top"
+                           Text="設定"
+                           Foreground="White"
+                           FontSize="18"
+                           FontWeight="Bold"
+                           Margin="0,0,0,12"
+                           UseLayoutRounding="True"
+                           SnapsToDevicePixels="True"
+                           TextOptions.TextFormattingMode="Display"
+                           TextOptions.TextRenderingMode="ClearType"
+                           TextOptions.TextHintingMode="Fixed"/>
+
+                <TabControl Background="#F0202020"
+                            BorderThickness="0"
+                            UseLayoutRounding="True"
+                            SnapsToDevicePixels="True"
+                            TextOptions.TextFormattingMode="Display"
+                            TextOptions.TextRenderingMode="ClearType"
+                            TextOptions.TextHintingMode="Fixed">
+
+                    <TabItem Header="基本設定">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      UseLayoutRounding="True"
+                                      SnapsToDevicePixels="True">
+                            <StackPanel Margin="10"
+                                        UseLayoutRounding="True"
+                                        SnapsToDevicePixels="True">
+
+                                <TextBlock Text="基本設定"
+                                           Foreground="White"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,12"/>
+
+                                <WrapPanel Margin="0,0,0,8"
+                                           UseLayoutRounding="True"
+                                           SnapsToDevicePixels="True">
+
+                                    <TextBlock Text="幅"
+                                               Style="{StaticResource SettingsLabelStyle}"/>
+
+                                    <TextBox x:Name="WidthInput"
+                                             Width="70"
+                                             Margin="0,0,12,0"/>
+
+                                    <TextBlock Text="高さ"
+                                               Style="{StaticResource SettingsLabelStyle}"/>
+
+                                    <TextBox x:Name="HeightInput"
+                                             Width="70"/>
+                                </WrapPanel>
+
+                                <CheckBox x:Name="TopmostCheckBox"
+                                          Content="常に最前面"
+                                          Foreground="White"
+                                          VerticalAlignment="Center"
+                                          IsChecked="True"
+                                          Margin="0,4,0,10"/>
+
+                                <CheckBox x:Name="StartupCheckBox"
+                                          Content="Windows起動時に自動起動"
+                                          Foreground="White"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,0,10"/>
+
+                                <DockPanel Margin="0,0,0,8"
+                                           UseLayoutRounding="True"
+                                           SnapsToDevicePixels="True">
+
+                                    <TextBlock Text="背景画像"
+                                               Foreground="White"
+                                               VerticalAlignment="Center"
+                                               Margin="0,0,8,0"/>
+
+                                    <Button Content="選択"
+                                            Width="60"
+                                            Style="{StaticResource SettingsButtonStyle}"
+                                            Click="SelectBackgroundButton_Click"/>
+
+                                    <Button Content="解除"
+                                            Width="60"
+                                            Style="{StaticResource SettingsButtonStyle}"
+                                            Click="ClearBackgroundButton_Click"/>
+                                </DockPanel>
+
+                                <TextBox x:Name="BackgroundPathTextBox"
+                                         IsReadOnly="True"
+                                         Margin="0,0,0,12"/>
+
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            UseLayoutRounding="True"
+                                            SnapsToDevicePixels="True">
+
+                                    <Button Content="反映"
+                                            Width="80"
+                                            Style="{StaticResource SettingsButtonStyle}"
+                                            Click="ApplySettingsButton_Click"/>
+
+                                    <Button Content="閉じる"
+                                            Width="80"
+                                            Style="{StaticResource SettingsButtonStyle}"
+                                            Click="CloseSettingsButton_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <TabItem Header="ウィジット">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      UseLayoutRounding="True"
+                                      SnapsToDevicePixels="True">
+                            <StackPanel Margin="10"
+                                        UseLayoutRounding="True"
+                                        SnapsToDevicePixels="True">
+
+                                <TextBlock Text="天気予報"
+                                           Foreground="White"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,8"/>
+
+                                <CheckBox x:Name="ShowWeatherCheckBox"
+                                          Content="天気予報を表示"
+                                          Foreground="White"
+                                          Margin="0,0,0,8"/>
+
+                                <CheckBox x:Name="LockWeatherMoveCheckBox"
+                                          Content="天気予報のマウス移動をロック"
+                                          Foreground="White"
+                                          Margin="0,0,0,8"/>
+                                <WrapPanel Margin="0,0,0,8"
+                                           UseLayoutRounding="True"
+                                           SnapsToDevicePixels="True">
+
+                                    <TextBlock Text="都道府県"
+                                               Style="{StaticResource SettingsLabelStyle}"/>
+
+                                    <ComboBox x:Name="WeatherPrefectureComboBox"
+                                              Width="120"
+                                              Margin="0,0,12,0"/>
+                                </WrapPanel>
+
+                                <WrapPanel Margin="0,0,0,8"
+                                           UseLayoutRounding="True"
+                                           SnapsToDevicePixels="True">
+
+                                    <TextBlock Text="X"
+                                               Style="{StaticResource SettingsLabelStyle}"/>
+
+                                    <TextBox x:Name="WeatherXInput"
+                                             Width="60"
+                                             Margin="0,0,12,0"/>
+
+                                    <TextBlock Text="Y"
+                                               Style="{StaticResource SettingsLabelStyle}"/>
+
+                                    <TextBox x:Name="WeatherYInput"
+                                             Width="60"
+                                             Margin="0,0,12,0"/>
+
+                                    <Button Content="天気更新"
+                                            Width="90"
+                                            Style="{StaticResource SettingsButtonStyle}"
+                                            Click="RefreshWeatherButton_Click"/>
+                                </WrapPanel>
+
+                                <Separator Margin="0,8,0,12"/>
+
+                                <TextBlock Text="ホットバー"
+                                           Foreground="White"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,8"/>
+
+                                <CheckBox x:Name="ShowHotbarCheckBox"
+                                          Content="ホットバーを表示"
+                                          Foreground="White"
+                                          Margin="0,0,0,8"/>
+
+                                <WrapPanel Margin="0,0,0,8"
+                                           UseLayoutRounding="True"
+                                           SnapsToDevicePixels="True">
+
+                                    <TextBlock Text="表示数"
+                                               Style="{StaticResource SettingsLabelStyle}"/>
+
+                                    <ComboBox x:Name="HotbarItemCountComboBox"
+                                              Width="70"
+                                              Margin="0,0,12,0">
+                                        <ComboBoxItem Content="1"/>
+                                        <ComboBoxItem Content="2"/>
+                                        <ComboBoxItem Content="3"/>
+                                        <ComboBoxItem Content="4"/>
+                                        <ComboBoxItem Content="5"/>
+                                        <ComboBoxItem Content="6"/>
+                                        <ComboBoxItem Content="7"/>
+                                        <ComboBoxItem Content="8"/>
+                                    </ComboBox>
+                                </WrapPanel>
+
+                                <CheckBox x:Name="LockHotbarMoveCheckBox"
+                                          Content="ホットバーのマウス移動をロック"
+                                          Foreground="White"
+                                          Margin="0,0,0,8"/>
+
+                                <TextBlock Text="ホットバーは、ロックOFF時に各スロットを個別にドラッグ移動できます。"
+                                           Foreground="#CCFFFFFF"
+                                           FontSize="12"
+                                           Margin="0,0,0,8"/>
+
+                                <TextBlock Text="ホットバー項目"
+                                           Foreground="White"
+                                           FontWeight="Bold"
+                                           Margin="0,10,0,6"/>
+
+                                <ItemsControl x:Name="HotbarSettingsList"
+                                              UseLayoutRounding="True"
+                                              SnapsToDevicePixels="True"/>
+
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,12,0,0"
+                                            UseLayoutRounding="True"
+                                            SnapsToDevicePixels="True">
+
+                                    <Button Content="ウィジット反映"
+                                            Width="110"
+                                            Style="{StaticResource SettingsButtonStyle}"
+                                            Click="ApplyWidgetSettingsButton_Click"/>
+
+                                    <Button Content="閉じる"
+                                            Width="80"
+                                            Style="{StaticResource SettingsButtonStyle}"
+                                            Click="CloseSettingsButton_Click"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                </TabControl>
+            </DockPanel>
+        </Border>
+
+        <!-- 非表示時の表示ボタン -->
+        <Button x:Name="ShowButton"
+                Content="表示"
+                Visibility="Collapsed"
+                Width="90"
+                Height="38"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,14,14"
+                Style="{StaticResource ClockButtonStyle}"
+                Click="ShowButton_Click"
+                Panel.ZIndex="40"/>
+
+    </Grid>
+</Window>

@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Authors>Rowsai</Authors>
+    <Company>Rowsai</Company>
+    <Product>Desktop Clock</Product>
+    <AssemblyTitle>Desktop Clock</AssemblyTitle>
+    <Description>Desktop clock application</Description>
+    <Copyright>Copyright © Rowsai</Copyright>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.9" />
+  </ItemGroup>
+
+</Project>
