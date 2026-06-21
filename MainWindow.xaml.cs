@@ -3,6 +3,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -29,9 +30,11 @@ namespace DesktopClock
         private readonly AppConfig config;
         private readonly JapaneseHolidayService holidayService = new();
         private readonly WeatherForecastService weatherService = new();
+        private readonly UpdateService updateService = new();
 
         private bool isLoading;
         private bool isUpdatingSizeText;
+        private bool isCheckingUpdate;
 
         private bool isHotbarDragCandidate;
         private bool isDraggingHotbar;
@@ -72,11 +75,17 @@ namespace DesktopClock
             timer.Start();
 
             UpdateClock();
+            UpdateVersionStatusText();
 
             isLoading = false;
 
             _ = LoadHolidayAsync();
             _ = RefreshWeatherAsync();
+
+            if (config.AutoCheckUpdates)
+            {
+                _ = CheckUpdateAsync(showNoUpdateMessage: false);
+            }
         }
 
         private void ApplyConfigToWindow()
@@ -93,6 +102,8 @@ namespace DesktopClock
             TopmostCheckBox.IsChecked = config.Topmost;
 
             StartupCheckBox.IsChecked = IsStartupEnabled();
+
+            AutoUpdateCheckBox.IsChecked = config.AutoCheckUpdates;
 
             WidthInput.Text = ((int)Width).ToString();
             HeightInput.Text = ((int)Height).ToString();
@@ -312,6 +323,8 @@ namespace DesktopClock
             Height = newHeight;
 
             Topmost = TopmostCheckBox.IsChecked == true;
+
+            config.AutoCheckUpdates = AutoUpdateCheckBox.IsChecked == true;
 
             SetStartupEnabled(StartupCheckBox.IsChecked == true);
 
@@ -1620,6 +1633,126 @@ namespace DesktopClock
             }
         }
 
+        private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
+        {
+            await CheckUpdateAsync(showNoUpdateMessage: true);
+        }
+
+        private async Task CheckUpdateAsync(bool showNoUpdateMessage)
+        {
+            if (isCheckingUpdate)
+            {
+                return;
+            }
+
+            isCheckingUpdate = true;
+            CheckUpdateButton.IsEnabled = false;
+            UpdateStatusText.Text = "アップデート確認中...";
+
+            try
+            {
+                UpdateCheckResult result = await updateService.CheckLatestAsync();
+
+                if (!result.Success)
+                {
+                    UpdateStatusText.Text =
+                        $"アップデート確認失敗：{result.Message}";
+
+                    if (showNoUpdateMessage)
+                    {
+                        MessageBox.Show(
+                            $"アップデート確認に失敗しました。\n\n{result.Message}",
+                            "アップデート",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Warning);
+                    }
+
+                    return;
+                }
+
+                if (!result.IsUpdateAvailable)
+                {
+                    UpdateStatusText.Text =
+                        $"最新です。現在のバージョン：{result.CurrentVersion}";
+
+                    if (showNoUpdateMessage)
+                    {
+                        MessageBox.Show(
+                            $"現在のバージョンは最新です。\n\n現在：{result.CurrentVersion}\n最新：{result.LatestVersion}",
+                            "アップデート",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Information);
+                    }
+
+                    return;
+                }
+
+                UpdateStatusText.Text =
+                    $"新しいバージョンがあります。現在：{result.CurrentVersion} / 最新：{result.LatestVersion}";
+
+                MessageBoxResult answer = MessageBox.Show(
+                    $"新しいバージョンがあります。\n\n現在：{result.CurrentVersion}\n最新：{result.LatestVersion}\n\nアップデートしますか？\n\n{result.AssetName}",
+                    "アップデート",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+
+                if (answer != MessageBoxResult.Yes)
+                {
+                    return;
+                }
+
+                UpdateStatusText.Text = "アップデートをダウンロード中...";
+
+                await updateService.DownloadAndInstallAsync(result.DownloadUrl);
+
+                SaveCurrentConfig();
+
+                MessageBox.Show(
+                    "アップデートを開始します。\nアプリを一度終了し、更新後に自動で再起動します。",
+                    "アップデート",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                Close();
+            }
+            finally
+            {
+                isCheckingUpdate = false;
+
+                if (CheckUpdateButton != null)
+                {
+                    CheckUpdateButton.IsEnabled = true;
+                }
+            }
+        }
+
+        private void UpdateVersionStatusText()
+        {
+            string version = GetCurrentVersionText();
+            UpdateStatusText.Text = $"現在のバージョン：{version}";
+        }
+
+        private static string GetCurrentVersionText()
+        {
+            Assembly assembly = Assembly.GetExecutingAssembly();
+
+            AssemblyInformationalVersionAttribute? informationalVersion =
+                assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+
+            string version = informationalVersion?.InformationalVersion
+                ?? assembly.GetName().Version?.ToString()
+                ?? "0.0.0";
+
+            int plusIndex = version.IndexOf('+');
+
+            if (plusIndex >= 0)
+            {
+                version = version[..plusIndex];
+            }
+
+            return version;
+        }
+
         private void SaveCurrentConfig()
         {
             if (isLoading)
@@ -1637,6 +1770,8 @@ namespace DesktopClock
             config.BackgroundImagePath = string.IsNullOrWhiteSpace(BackgroundPathTextBox.Text)
                 ? null
                 : BackgroundPathTextBox.Text;
+
+            config.AutoCheckUpdates = AutoUpdateCheckBox.IsChecked == true;
 
             config.ShowWeatherWidget = ShowWeatherCheckBox.IsChecked == true;
             config.ShowHotbarWidget = ShowHotbarCheckBox.IsChecked == true;

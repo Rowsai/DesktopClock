@@ -17,6 +17,8 @@ namespace DesktopClock
 
         public string? BackgroundImagePath { get; set; }
 
+        public bool AutoCheckUpdates { get; set; } = true;
+
         public bool ShowWeatherWidget { get; set; } = true;
         public double WeatherX { get; set; } = 20;
         public double WeatherY { get; set; } = 20;

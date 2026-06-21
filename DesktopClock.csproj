@@ -1,21 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <Authors>Rowsai</Authors>
-    <Company>Rowsai</Company>
-    <Product>Desktop Clock</Product>
-    <AssemblyTitle>Desktop Clock</AssemblyTitle>
-    <Description>Desktop clock application</Description>
-    <Copyright>Copyright © Rowsai</Copyright>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+
+    <!-- アプリの現在バージョン。GitHub Release の tag_name と比較します -->
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.2</AssemblyVersion>
+    <FileVersion>1.0.0.2</FileVersion>
+    <InformationalVersion>1.0.2</InformationalVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.9" />
+    <!-- 祝日CSVのShift-JIS読み込みで使っている場合は残してください -->
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.0" />
   </ItemGroup>
 
 </Project>

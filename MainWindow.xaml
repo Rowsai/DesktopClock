@@ -158,6 +158,12 @@
                                         Property="Background"
                                         Value="#FF222222"/>
                             </Trigger>
+
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ButtonBorder"
+                                        Property="Opacity"
+                                        Value="0.5"/>
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -352,7 +358,7 @@
                 UseLayoutRounding="True"
                 SnapsToDevicePixels="True"/>
 
-        <TextBlock Text="version 1.02"
+        <TextBlock Text="Created by Rowsai"
                    Foreground="#CCFFFFFF"
                    FontSize="12"
                    FontWeight="Bold"
@@ -488,6 +494,12 @@
                                           VerticalAlignment="Center"
                                           Margin="0,0,0,10"/>
 
+                                <CheckBox x:Name="AutoUpdateCheckBox"
+                                          Content="起動時にアップデートを自動確認"
+                                          Foreground="White"
+                                          VerticalAlignment="Center"
+                                          Margin="0,0,0,10"/>
+
                                 <DockPanel Margin="0,0,0,8">
                                     <TextBlock Text="背景画像"
                                                Foreground="White"
@@ -508,6 +520,29 @@
                                 <TextBox x:Name="BackgroundPathTextBox"
                                          IsReadOnly="True"
                                          Margin="0,0,0,12"/>
+
+                                <Separator Margin="0,8,0,12"/>
+
+                                <TextBlock Text="アップデート"
+                                           Foreground="White"
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,8"/>
+
+                                <TextBlock x:Name="UpdateStatusText"
+                                           Text="現在のバージョン確認待ち"
+                                           Foreground="#CCFFFFFF"
+                                           FontSize="12"
+                                           Margin="0,0,0,8"/>
+
+                                <Button x:Name="CheckUpdateButton"
+                                        Content="アップデート確認"
+                                        Width="150"
+                                        HorizontalAlignment="Left"
+                                        Style="{StaticResource SettingsButtonStyle}"
+                                        Click="CheckUpdateButton_Click"/>
+
+                                <Separator Margin="0,12,0,12"/>
 
                                 <StackPanel Orientation="Horizontal"
                                             HorizontalAlignment="Right">
