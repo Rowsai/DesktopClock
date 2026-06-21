@@ -1729,7 +1729,9 @@ namespace DesktopClock
         private void UpdateVersionStatusText()
         {
             string version = GetCurrentVersionText();
+
             UpdateStatusText.Text = $"現在のバージョン：{version}";
+            AppVersionText.Text = $"Version {version}";
         }
 
         private static string GetCurrentVersionText()

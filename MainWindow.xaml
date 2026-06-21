@@ -358,23 +358,24 @@
                 UseLayoutRounding="True"
                 SnapsToDevicePixels="True"/>
 
-        <TextBlock Text="Created by Rowsai"
-                   Foreground="#CCFFFFFF"
-                   FontSize="12"
-                   FontWeight="Bold"
-                   HorizontalAlignment="Right"
-                   VerticalAlignment="Bottom"
-                   Margin="0,0,16,58"
-                   Panel.ZIndex="18"
-                   UseLayoutRounding="True"
-                   SnapsToDevicePixels="True"
-                   TextOptions.TextFormattingMode="Display"
-                   TextOptions.TextRenderingMode="ClearType"
-                   TextOptions.TextHintingMode="Fixed">
+        <TextBlock x:Name="AppVersionText"
+                Text="Version 0.0.0"
+                Foreground="#CCFFFFFF"
+                FontSize="12"
+                FontWeight="Bold"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Bottom"
+                Margin="0,0,16,58"
+                Panel.ZIndex="18"
+                UseLayoutRounding="True"
+                SnapsToDevicePixels="True"
+                TextOptions.TextFormattingMode="Display"
+                TextOptions.TextRenderingMode="ClearType"
+                TextOptions.TextHintingMode="Fixed">
             <TextBlock.Effect>
                 <DropShadowEffect BlurRadius="5"
-                                  ShadowDepth="1"
-                                  Opacity="0.8"/>
+                                ShadowDepth="1"
+                                Opacity="0.8"/>
             </TextBlock.Effect>
         </TextBlock>
 
