@@ -21,7 +21,10 @@ namespace DesktopClock
         public double WeatherX { get; set; } = 20;
         public double WeatherY { get; set; } = 20;
         public bool LockWeatherMove { get; set; } = false;
+
         public string WeatherPrefecture { get; set; } = "東京都";
+        public string WeatherArea { get; set; } = "東京都";
+
         public bool ShowHotbarWidget { get; set; } = true;
 
         // 旧設定との互換用。現在は各スロットの X/Y を使います。
@@ -97,6 +100,16 @@ namespace DesktopClock
         {
             HotbarItems ??= new List<HotbarItemConfig>();
 
+            if (string.IsNullOrWhiteSpace(WeatherPrefecture))
+            {
+                WeatherPrefecture = "東京都";
+            }
+
+            if (string.IsNullOrWhiteSpace(WeatherArea))
+            {
+                WeatherArea = WeatherPrefecture;
+            }
+
             HotbarItemCount = Math.Clamp(HotbarItemCount, 1, 8);
 
             while (HotbarItems.Count < 8)
@@ -107,7 +120,6 @@ namespace DesktopClock
                 {
                     Name = $"Slot {number}",
                     IconPath = "",
-                    HotKey = "",
                     AppPath = "",
                     Arguments = "",
                     Url = "",
@@ -126,6 +138,11 @@ namespace DesktopClock
                 {
                     item.Name = $"Slot {i + 1}";
                 }
+
+                item.IconPath ??= "";
+                item.AppPath ??= "";
+                item.Arguments ??= "";
+                item.Url ??= "";
 
                 if (item.X != 0 || item.Y != 0)
                 {
@@ -165,10 +182,8 @@ namespace DesktopClock
     {
         public string Name { get; set; } = "";
         public string IconPath { get; set; } = "";
-        public string HotKey { get; set; } = "";
         public string AppPath { get; set; } = "";
         public string Arguments { get; set; } = "";
-
         public string Url { get; set; } = "";
 
         public double X { get; set; } = 20;

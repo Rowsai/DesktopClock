@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 
@@ -20,6 +21,9 @@ namespace DesktopClock
             @"Software\Microsoft\Windows\CurrentVersion\Run";
 
         private const string StartupAppName = "DesktopClock";
+
+        private const double HotbarButtonWidth = 48;
+        private const double HotbarButtonHeight = 48;
 
         private readonly DispatcherTimer timer;
         private readonly AppConfig config;
@@ -104,6 +108,7 @@ namespace DesktopClock
             {
                 RootGrid.Background = new SolidColorBrush(Color.FromRgb(32, 32, 32));
             }
+
             ShowWeatherCheckBox.IsChecked = config.ShowWeatherWidget;
             WeatherXInput.Text = ((int)config.WeatherX).ToString();
             WeatherYInput.Text = ((int)config.WeatherY).ToString();
@@ -126,9 +131,12 @@ namespace DesktopClock
                 : Cursors.SizeAll;
 
             EnsureDefaultHotbarItems();
+            KeepHotbarItemsInsideWindow();
             RefreshHotbarSettingsList();
             RefreshHotbarWidget();
             ApplyWidgetPositionAndVisibility();
+
+            SettingsPanelTransform.X = SettingsPanel.Width;
 
             EnsureWindowInsideScreen();
         }
@@ -211,10 +219,61 @@ namespace DesktopClock
 
         private void SettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            SettingsPanel.Visibility =
-                SettingsPanel.Visibility == Visibility.Visible
-                    ? Visibility.Collapsed
-                    : Visibility.Visible;
+            if (SettingsPanel.Visibility == Visibility.Visible)
+            {
+                CloseSettingsPanelWithAnimation();
+            }
+            else
+            {
+                OpenSettingsPanelWithAnimation();
+            }
+        }
+
+        private void OpenSettingsPanelWithAnimation()
+        {
+            SettingsPanel.Visibility = Visibility.Visible;
+
+            double panelWidth = SettingsPanel.ActualWidth > 0
+                ? SettingsPanel.ActualWidth
+                : SettingsPanel.Width;
+
+            DoubleAnimation animation = new DoubleAnimation
+            {
+                From = panelWidth,
+                To = 0,
+                Duration = TimeSpan.FromMilliseconds(220),
+                EasingFunction = new CubicEase
+                {
+                    EasingMode = EasingMode.EaseOut
+                }
+            };
+
+            SettingsPanelTransform.BeginAnimation(TranslateTransform.XProperty, animation);
+        }
+
+        private void CloseSettingsPanelWithAnimation()
+        {
+            double panelWidth = SettingsPanel.ActualWidth > 0
+                ? SettingsPanel.ActualWidth
+                : SettingsPanel.Width;
+
+            DoubleAnimation animation = new DoubleAnimation
+            {
+                From = 0,
+                To = panelWidth,
+                Duration = TimeSpan.FromMilliseconds(180),
+                EasingFunction = new CubicEase
+                {
+                    EasingMode = EasingMode.EaseIn
+                }
+            };
+
+            animation.Completed += (_, _) =>
+            {
+                SettingsPanel.Visibility = Visibility.Collapsed;
+            };
+
+            SettingsPanelTransform.BeginAnimation(TranslateTransform.XProperty, animation);
         }
 
         private void ApplySettingsButton_Click(object sender, RoutedEventArgs e)
@@ -256,12 +315,16 @@ namespace DesktopClock
 
             SetStartupEnabled(StartupCheckBox.IsChecked == true);
 
+            KeepHotbarItemsInsideWindow();
+            RefreshHotbarWidget();
+            RefreshHotbarSettingsList();
+
             SaveCurrentConfig();
         }
 
         private void CloseSettingsButton_Click(object sender, RoutedEventArgs e)
         {
-            SettingsPanel.Visibility = Visibility.Collapsed;
+            CloseSettingsPanelWithAnimation();
         }
 
         private void SelectBackgroundButton_Click(object sender, RoutedEventArgs e)
@@ -357,6 +420,11 @@ namespace DesktopClock
 
             SettingsButton.Visibility = Visibility.Collapsed;
             HideButton.Visibility = Visibility.Collapsed;
+
+            SettingsPanelTransform.X = SettingsPanel.ActualWidth > 0
+                ? SettingsPanel.ActualWidth
+                : SettingsPanel.Width;
+
             SettingsPanel.Visibility = Visibility.Collapsed;
 
             ShowButton.Visibility = Visibility.Visible;
@@ -371,7 +439,9 @@ namespace DesktopClock
 
             ShowButton.Visibility = Visibility.Collapsed;
 
+            KeepHotbarItemsInsideWindow();
             ApplyWidgetPositionAndVisibility();
+            RefreshHotbarWidget();
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
@@ -425,6 +495,14 @@ namespace DesktopClock
 
             isUpdatingSizeText = false;
 
+            bool hotbarPositionChanged = KeepHotbarItemsInsideWindow();
+
+            if (hotbarPositionChanged)
+            {
+                RefreshHotbarWidget();
+                RefreshHotbarSettingsList();
+            }
+
             SaveCurrentConfig();
         }
 
@@ -440,6 +518,7 @@ namespace DesktopClock
 
         private void Window_Closing(object? sender, CancelEventArgs e)
         {
+            KeepHotbarItemsInsideWindow();
             SaveCurrentConfig();
         }
 
@@ -452,28 +531,30 @@ namespace DesktopClock
         {
             HotbarSettingsList.Items.Clear();
 
-            for (int i = 0; i < config.HotbarItems.Count; i++)
-            {
-                HotbarItemConfig item = config.HotbarItems[i];
+            config.HotbarItemCount = Math.Clamp(config.HotbarItemCount, 1, 8);
 
-                Border border = new Border
+            int settingCount = Math.Min(config.HotbarItemCount, config.HotbarItems.Count);
+
+            for (int i = 0; i < settingCount; i++)
+            {
+                int slotIndex = i;
+                HotbarItemConfig item = config.HotbarItems[slotIndex];
+
+                Expander expander = new Expander
                 {
+                    Header = $"スロット {slotIndex + 1}：{(string.IsNullOrWhiteSpace(item.Name) ? "未設定" : item.Name)}",
+                    Foreground = Brushes.White,
+                    Background = new SolidColorBrush(Color.FromArgb(120, 30, 30, 30)),
                     BorderBrush = Brushes.Gray,
                     BorderThickness = new Thickness(1),
-                    CornerRadius = new CornerRadius(8),
-                    Padding = new Thickness(8),
                     Margin = new Thickness(0, 0, 0, 8),
-                    Background = new SolidColorBrush(Color.FromArgb(120, 30, 30, 30))
+                    Padding = new Thickness(8),
+                    IsExpanded = false
                 };
 
-                StackPanel panel = new StackPanel();
-
-                TextBlock title = new TextBlock
+                StackPanel panel = new StackPanel
                 {
-                    Text = $"スロット {i + 1}",
-                    Foreground = Brushes.White,
-                    FontWeight = FontWeights.Bold,
-                    Margin = new Thickness(0, 0, 0, 6)
+                    Margin = new Thickness(4, 8, 4, 4)
                 };
 
                 TextBox nameBox = new TextBox
@@ -491,14 +572,8 @@ namespace DesktopClock
                 Button iconButton = new Button
                 {
                     Content = "アイコン選択",
-                    Margin = new Thickness(0, 0, 0, 4)
-                };
-
-                TextBox hotKeyBox = new TextBox
-                {
-                    Text = item.HotKey,
                     Margin = new Thickness(0, 0, 0, 4),
-                    ToolTip = "例: Ctrl+Alt+1"
+                    Style = (Style)FindResource("SettingsButtonStyle")
                 };
 
                 TextBox appBox = new TextBox
@@ -510,7 +585,8 @@ namespace DesktopClock
                 Button appButton = new Button
                 {
                     Content = "アプリ選択",
-                    Margin = new Thickness(0, 0, 0, 4)
+                    Margin = new Thickness(0, 0, 0, 4),
+                    Style = (Style)FindResource("SettingsButtonStyle")
                 };
 
                 TextBox argsBox = new TextBox
@@ -519,7 +595,7 @@ namespace DesktopClock
                     Margin = new Thickness(0, 0, 0, 4),
                     ToolTip = "起動引数がある場合のみ入力"
                 };
-                
+
                 TextBox urlBox = new TextBox
                 {
                     Text = item.Url,
@@ -537,6 +613,7 @@ namespace DesktopClock
                 nameBox.TextChanged += (_, _) =>
                 {
                     item.Name = nameBox.Text;
+                    expander.Header = $"スロット {slotIndex + 1}：{(string.IsNullOrWhiteSpace(item.Name) ? "未設定" : item.Name)}";
                     SaveCurrentConfig();
                     RefreshHotbarWidget();
                 };
@@ -544,13 +621,6 @@ namespace DesktopClock
                 iconBox.TextChanged += (_, _) =>
                 {
                     item.IconPath = iconBox.Text;
-                    SaveCurrentConfig();
-                    RefreshHotbarWidget();
-                };
-
-                hotKeyBox.TextChanged += (_, _) =>
-                {
-                    item.HotKey = hotKeyBox.Text;
                     SaveCurrentConfig();
                     RefreshHotbarWidget();
                 };
@@ -567,7 +637,7 @@ namespace DesktopClock
                     item.Arguments = argsBox.Text;
                     SaveCurrentConfig();
                 };
-                
+
                 urlBox.TextChanged += (_, _) =>
                 {
                     item.Url = urlBox.Text;
@@ -611,57 +681,39 @@ namespace DesktopClock
                     }
                 };
 
-                panel.Children.Add(title);
-
-                panel.Children.Add(new TextBlock
-                {
-                    Text = "表示名",
-                    Foreground = Brushes.White
-                });
+                panel.Children.Add(CreateSettingsText("表示名"));
                 panel.Children.Add(nameBox);
 
-                panel.Children.Add(new TextBlock
-                {
-                    Text = "手動アイコン画像",
-                    Foreground = Brushes.White
-                });
+                panel.Children.Add(CreateSettingsText("手動アイコン画像"));
                 panel.Children.Add(iconBox);
                 panel.Children.Add(iconButton);
 
-                panel.Children.Add(new TextBlock
-                {
-                    Text = "ホットキー",
-                    Foreground = Brushes.White
-                });
-                panel.Children.Add(hotKeyBox);
-
-                panel.Children.Add(new TextBlock
-                {
-                    Text = "起動アプリ",
-                    Foreground = Brushes.White
-                });
+                panel.Children.Add(CreateSettingsText("起動アプリ"));
                 panel.Children.Add(appBox);
                 panel.Children.Add(appButton);
 
-                panel.Children.Add(new TextBlock
-                {
-                    Text = "起動引数",
-                    Foreground = Brushes.White
-                });
+                panel.Children.Add(CreateSettingsText("起動引数"));
                 panel.Children.Add(argsBox);
-                
-                panel.Children.Add(new TextBlock
-                {
-                    Text = "起動URL",
-                    Foreground = Brushes.White
-                });
+
+                panel.Children.Add(CreateSettingsText("起動URL"));
                 panel.Children.Add(urlBox);
 
                 panel.Children.Add(positionText);
 
-                border.Child = panel;
-                HotbarSettingsList.Items.Add(border);
+                expander.Content = panel;
+
+                HotbarSettingsList.Items.Add(expander);
             }
+        }
+
+        private TextBlock CreateSettingsText(string text)
+        {
+            return new TextBlock
+            {
+                Text = text,
+                Foreground = Brushes.White,
+                Margin = new Thickness(0, 6, 0, 2)
+            };
         }
 
         private async void ApplyWidgetSettingsButton_Click(object sender, RoutedEventArgs e)
@@ -673,6 +725,7 @@ namespace DesktopClock
             config.LockHotbarMove = LockHotbarMoveCheckBox.IsChecked == true;
 
             config.WeatherPrefecture = GetSelectedWeatherPrefecture();
+            config.WeatherArea = GetSelectedWeatherArea();
 
             if (double.TryParse(WeatherXInput.Text, out double weatherX))
             {
@@ -694,6 +747,8 @@ namespace DesktopClock
                 ? Cursors.Arrow
                 : Cursors.SizeAll;
 
+            KeepHotbarItemsInsideWindow();
+            RefreshHotbarSettingsList();
             RefreshHotbarWidget();
             ApplyWidgetPositionAndVisibility();
 
@@ -720,20 +775,21 @@ namespace DesktopClock
             await RefreshWeatherAsync();
         }
 
-       private async Task RefreshWeatherAsync()
+        private async Task RefreshWeatherAsync()
         {
             WeatherCurrentText.Text = "現在：取得中";
             WeatherTodayText.Text = "今日：取得中";
             WeatherTomorrowText.Text = "明日：取得中";
 
             string selectedPrefecture = GetSelectedWeatherPrefecture();
+            string selectedArea = GetSelectedWeatherArea();
 
             WeatherForecastResult? forecast =
-                await weatherService.GetForecastAsync(selectedPrefecture);
+                await weatherService.GetForecastAsync(selectedPrefecture, selectedArea);
 
             if (forecast == null)
             {
-                WeatherAreaText.Text = selectedPrefecture;
+                WeatherAreaText.Text = selectedArea;
                 WeatherCurrentText.Text = "現在：取得失敗";
                 WeatherTodayText.Text = "今日：取得失敗";
                 WeatherTomorrowText.Text = "明日：取得失敗";
@@ -752,9 +808,128 @@ namespace DesktopClock
                 $"明日：{forecast.TomorrowWeather} / 最高 {forecast.TomorrowMaxTemperature:0.#}℃ / 最低 {forecast.TomorrowMinTemperature:0.#}℃";
         }
 
+        private void SetupWeatherPrefectureComboBox()
+        {
+            WeatherPrefectureComboBox.Items.Clear();
+
+            foreach (string prefecture in WeatherForecastService.GetPrefectureNames())
+            {
+                WeatherPrefectureComboBox.Items.Add(prefecture);
+            }
+
+            if (!string.IsNullOrWhiteSpace(config.WeatherPrefecture) &&
+                WeatherPrefectureComboBox.Items.Contains(config.WeatherPrefecture))
+            {
+                WeatherPrefectureComboBox.SelectedItem = config.WeatherPrefecture;
+            }
+            else
+            {
+                WeatherPrefectureComboBox.SelectedItem = "東京都";
+                config.WeatherPrefecture = "東京都";
+            }
+
+            SetupWeatherAreaComboBox();
+        }
+
+        private void SetupWeatherAreaComboBox()
+        {
+            string prefecture = GetSelectedWeatherPrefecture();
+
+            WeatherAreaComboBox.Items.Clear();
+
+            foreach (string area in WeatherForecastService.GetAreaNames(prefecture))
+            {
+                WeatherAreaComboBox.Items.Add(area);
+            }
+
+            if (!string.IsNullOrWhiteSpace(config.WeatherArea) &&
+                WeatherAreaComboBox.Items.Contains(config.WeatherArea))
+            {
+                WeatherAreaComboBox.SelectedItem = config.WeatherArea;
+            }
+            else
+            {
+                if (WeatherAreaComboBox.Items.Count > 0)
+                {
+                    WeatherAreaComboBox.SelectedIndex = 0;
+
+                    if (WeatherAreaComboBox.SelectedItem is string selectedArea)
+                    {
+                        config.WeatherArea = selectedArea;
+                    }
+                }
+            }
+        }
+
+        private void WeatherPrefectureComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (isLoading)
+            {
+                return;
+            }
+
+            config.WeatherPrefecture = GetSelectedWeatherPrefecture();
+
+            config.WeatherArea = "";
+
+            SetupWeatherAreaComboBox();
+
+            SaveCurrentConfig();
+        }
+
+        private string GetSelectedWeatherPrefecture()
+        {
+            if (WeatherPrefectureComboBox.SelectedItem is string prefecture &&
+                !string.IsNullOrWhiteSpace(prefecture))
+            {
+                return prefecture;
+            }
+
+            if (!string.IsNullOrWhiteSpace(config.WeatherPrefecture))
+            {
+                return config.WeatherPrefecture;
+            }
+
+            return "東京都";
+        }
+
+        private string GetSelectedWeatherArea()
+        {
+            if (WeatherAreaComboBox.SelectedItem is string area &&
+                !string.IsNullOrWhiteSpace(area))
+            {
+                return area;
+            }
+
+            if (!string.IsNullOrWhiteSpace(config.WeatherArea))
+            {
+                return config.WeatherArea;
+            }
+
+            return GetSelectedWeatherPrefecture();
+        }
+
+        private void HotbarItemCountComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (isLoading)
+            {
+                return;
+            }
+
+            config.HotbarItemCount = GetSelectedHotbarItemCount();
+
+            KeepHotbarItemsInsideWindow();
+            RefreshHotbarSettingsList();
+            RefreshHotbarWidget();
+
+            SaveCurrentConfig();
+        }
+
         private void RefreshHotbarWidget()
         {
             HotbarCanvas.Children.Clear();
+
+            KeepHotbarItemsInsideWindow();
 
             config.HotbarItemCount = Math.Clamp(config.HotbarItemCount, 1, 8);
 
@@ -767,8 +942,8 @@ namespace DesktopClock
 
                 Button button = new Button
                 {
-                    Width = 48,
-                    Height = 48,
+                    Width = HotbarButtonWidth,
+                    Height = HotbarButtonHeight,
                     ToolTip = BuildHotbarToolTip(item, index),
                     Cursor = config.LockHotbarMove
                         ? Cursors.Hand
@@ -805,17 +980,48 @@ namespace DesktopClock
             }
         }
 
+        private bool KeepHotbarItemsInsideWindow()
+        {
+            bool changed = false;
+
+            if (config.HotbarItems == null || config.HotbarItems.Count == 0)
+            {
+                return false;
+            }
+
+            double width = ActualWidth > 0 ? ActualWidth : Width;
+            double height = ActualHeight > 0 ? ActualHeight : Height;
+
+            double maxX = Math.Max(0, width - HotbarButtonWidth);
+            double maxY = Math.Max(0, height - HotbarButtonHeight);
+
+            foreach (HotbarItemConfig item in config.HotbarItems)
+            {
+                double oldX = item.X;
+                double oldY = item.Y;
+
+                item.X = Math.Max(0, Math.Min(item.X, maxX));
+                item.Y = Math.Max(0, Math.Min(item.Y, maxY));
+
+                if (Math.Abs(oldX - item.X) > 0.1 ||
+                    Math.Abs(oldY - item.Y) > 0.1)
+                {
+                    changed = true;
+                }
+            }
+
+            return changed;
+        }
+
         private FrameworkElement CreateHotbarButtonContent(HotbarItemConfig item, int index)
         {
             bool hasApp = !string.IsNullOrWhiteSpace(item.AppPath);
             bool hasValidApp = hasApp && File.Exists(item.AppPath);
             bool hasUrl = !string.IsNullOrWhiteSpace(item.Url);
-            bool hasHotKey = !string.IsNullOrWhiteSpace(item.HotKey);
             bool hasManualIcon =
                 !string.IsNullOrWhiteSpace(item.IconPath) &&
                 File.Exists(item.IconPath);
 
-            // 1. 起動アプリが設定されている場合は、起動アプリのアイコンを最優先
             if (hasValidApp)
             {
                 ImageSource? appIcon = TryGetAssociatedIconImageSource(item.AppPath);
@@ -838,15 +1044,11 @@ namespace DesktopClock
                 return CreateHotbarTextBlock(Path.GetFileNameWithoutExtension(item.AppPath));
             }
 
-            // 2. 起動アプリがなく、URLが設定されていて、手動アイコンもある場合
-            //    → 手動アイコンを表示する
             if (hasUrl && hasManualIcon)
             {
                 return CreateManualHotbarIcon(item.IconPath);
             }
 
-            // 3. 起動アプリがなく、URLだけ設定されている場合
-            //    → URL種別の文字を表示する
             if (hasUrl)
             {
                 if (IsSteamUrl(item.Url))
@@ -862,28 +1064,18 @@ namespace DesktopClock
                 return CreateHotbarTextBlock("URL");
             }
 
-            // 4. URLも起動アプリもなく、ホットキーだけ設定されている場合
-            //    → ホットキー文字列を表示
-            if (hasHotKey)
-            {
-                return CreateHotbarTextBlock(item.HotKey);
-            }
-
-            // 5. 起動アプリ、URL、ホットキーがなく、手動アイコンがある場合
-            //    → 手動アイコンを表示
             if (hasManualIcon)
             {
                 return CreateManualHotbarIcon(item.IconPath);
             }
 
-            // 6. 何もなければ表示名、なければ番号
             string text = string.IsNullOrWhiteSpace(item.Name)
                 ? $"{index + 1}"
                 : item.Name;
 
             return CreateHotbarTextBlock(text);
         }
-        
+
         private FrameworkElement CreateManualHotbarIcon(string iconPath)
         {
             BitmapImage bitmap = new BitmapImage();
@@ -930,7 +1122,6 @@ namespace DesktopClock
 
             bool hasApp = !string.IsNullOrWhiteSpace(item.AppPath);
             bool hasUrl = !string.IsNullOrWhiteSpace(item.Url);
-            bool hasHotKey = !string.IsNullOrWhiteSpace(item.HotKey);
 
             string tooltip = name;
 
@@ -944,11 +1135,6 @@ namespace DesktopClock
                 tooltip += $"\n起動URL：{item.Url}";
             }
 
-            if (hasHotKey)
-            {
-                tooltip += $"\nホットキー：{item.HotKey}";
-            }
-
             if (hasApp)
             {
                 tooltip += "\n実行優先：起動アプリ";
@@ -956,10 +1142,6 @@ namespace DesktopClock
             else if (hasUrl)
             {
                 tooltip += "\n実行優先：URL";
-            }
-            else if (hasHotKey)
-            {
-                tooltip += "\n実行優先：ホットキー";
             }
 
             tooltip += $"\n位置：X={(int)item.X}, Y={(int)item.Y}";
@@ -1003,9 +1185,7 @@ namespace DesktopClock
             bool hasApp = !string.IsNullOrWhiteSpace(item.AppPath);
             bool hasValidApp = hasApp && File.Exists(item.AppPath);
             bool hasUrl = !string.IsNullOrWhiteSpace(item.Url);
-            bool hasHotKey = !string.IsNullOrWhiteSpace(item.HotKey);
 
-            // 1. 起動アプリがある場合は最優先
             if (hasValidApp)
             {
                 LaunchHotbarItem(item);
@@ -1022,31 +1202,19 @@ namespace DesktopClock
                 return;
             }
 
-            // 2. URLがある場合
             if (hasUrl)
             {
                 LaunchHotbarUrl(item.Url);
                 return;
             }
 
-            // 3. ホットキーがある場合
-            if (hasHotKey)
-            {
-                MessageBox.Show(
-                    $"このスロットにはホットキーが設定されています。\n\n{item.HotKey}\n\n現在の実装では、ホットキーは表示用です。",
-                    "ホットバー",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                return;
-            }
-
             MessageBox.Show(
-                "起動アプリ、URL、ホットキーが設定されていません。",
+                "起動アプリまたはURLが設定されていません。",
                 "ホットバー",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
         }
-        
+
         private void LaunchHotbarItem(HotbarItemConfig item)
         {
             if (string.IsNullOrWhiteSpace(item.AppPath))
@@ -1112,7 +1280,6 @@ namespace DesktopClock
                     return;
                 }
 
-                // steam:// などのカスタムURLスキームは Windows に任せる
                 ProcessStartInfo startInfo = new ProcessStartInfo
                 {
                     FileName = trimmedUrl,
@@ -1151,7 +1318,6 @@ namespace DesktopClock
                     return;
                 }
 
-                // Chromeが見つからない場合は既定ブラウザで開く
                 ProcessStartInfo fallbackStartInfo = new ProcessStartInfo
                 {
                     FileName = url,
@@ -1287,8 +1453,16 @@ namespace DesktopClock
             double newX = hotbarDragStartX + diffX;
             double newY = hotbarDragStartY + diffY;
 
-            newX = Math.Max(0, Math.Min(newX, Math.Max(0, ActualWidth - button.ActualWidth)));
-            newY = Math.Max(0, Math.Min(newY, Math.Max(0, ActualHeight - button.ActualHeight)));
+            double buttonWidth = button.ActualWidth > 0
+                ? button.ActualWidth
+                : HotbarButtonWidth;
+
+            double buttonHeight = button.ActualHeight > 0
+                ? button.ActualHeight
+                : HotbarButtonHeight;
+
+            newX = Math.Max(0, Math.Min(newX, Math.Max(0, ActualWidth - buttonWidth)));
+            newY = Math.Max(0, Math.Min(newY, Math.Max(0, ActualHeight - buttonHeight)));
 
             item.X = newX;
             item.Y = newY;
@@ -1339,6 +1513,7 @@ namespace DesktopClock
 
             if (save)
             {
+                KeepHotbarItemsInsideWindow();
                 SaveCurrentConfig();
                 RefreshHotbarSettingsList();
             }
@@ -1468,8 +1643,9 @@ namespace DesktopClock
 
             config.LockWeatherMove = LockWeatherMoveCheckBox.IsChecked == true;
             config.LockHotbarMove = LockHotbarMoveCheckBox.IsChecked == true;
-            config.WeatherPrefecture = GetSelectedWeatherPrefecture();
 
+            config.WeatherPrefecture = GetSelectedWeatherPrefecture();
+            config.WeatherArea = GetSelectedWeatherArea();
             config.HotbarItemCount = GetSelectedHotbarItemCount();
 
             if (double.TryParse(WeatherXInput.Text, out double weatherX))
@@ -1482,44 +1658,9 @@ namespace DesktopClock
                 config.WeatherY = weatherY;
             }
 
+            KeepHotbarItemsInsideWindow();
+
             config.Save();
-        }
-        
-        private void SetupWeatherPrefectureComboBox()
-        {
-            WeatherPrefectureComboBox.Items.Clear();
-
-            foreach (string prefecture in WeatherForecastService.GetPrefectureNames())
-            {
-                WeatherPrefectureComboBox.Items.Add(prefecture);
-            }
-
-            if (!string.IsNullOrWhiteSpace(config.WeatherPrefecture) &&
-                WeatherPrefectureComboBox.Items.Contains(config.WeatherPrefecture))
-            {
-                WeatherPrefectureComboBox.SelectedItem = config.WeatherPrefecture;
-            }
-            else
-            {
-                WeatherPrefectureComboBox.SelectedItem = "東京都";
-                config.WeatherPrefecture = "東京都";
-            }
-        }
-
-        private string GetSelectedWeatherPrefecture()
-        {
-            if (WeatherPrefectureComboBox.SelectedItem is string prefecture &&
-                !string.IsNullOrWhiteSpace(prefecture))
-            {
-                return prefecture;
-            }
-
-            if (!string.IsNullOrWhiteSpace(config.WeatherPrefecture))
-            {
-                return config.WeatherPrefecture;
-            }
-
-            return "東京都";
         }
 
         private void EnsureWindowInsideScreen()
